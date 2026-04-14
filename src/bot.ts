@@ -34,7 +34,8 @@ async function askDeepSeek(userText: string): Promise<string> {
   const messages: deepSeekMessage[] = [
     {
       role: "system",
-      content: "You are a helpful assistant that answers questions based on the provided context.",
+      content:
+        "You are a helpful assistant that answers questions based on the provided context.",
     },
     {
       role: "user",
@@ -56,7 +57,9 @@ async function askDeepSeek(userText: string): Promise<string> {
   });
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`DeepSeek API error: ${response.status} ${response.statusText} - ${errorText}`);
+    throw new Error(
+      `DeepSeek API error: ${response.status} ${response.statusText} - ${errorText}`,
+    );
   }
   const data = (await response.json()) as deepseekResponse;
   const answer = data.choices?.[0]?.message?.content?.trim();
@@ -94,7 +97,7 @@ app.get("/", (_req, res) => {
   res.send("Bot is runnnng...");
 });
 
-app.get("health", (_req, res) => {
+app.get("/health", (_req, res) => {
   res.status(200).json({ status: true });
 });
 app.listen(PORT, () => {
