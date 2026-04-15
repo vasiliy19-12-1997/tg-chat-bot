@@ -6,6 +6,7 @@ import crypto from "node:crypto";
 const token = process.env.BOT_TOKEN;
 const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
 const PORT = Number(process.env.PORT || 3000);
+const TIMEZONE_OFFSET = Number(process.env.TIMEZONE_OFFSET || 0);
 
 if (!token) {
   throw new Error("BOT_TOKEN is not set");
@@ -82,20 +83,30 @@ async function askDeepSeek(userText: string): Promise<string> {
 function isValidTime(time: string): boolean {
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(time);
 }
-function getCurrentTime() {
+
+function getTargetDate(): Date {
   const now = new Date();
-  const hours = String(now.getHours()).padStart(2, "0");
-  const minutes = String(now.getMinutes()).padStart(2, "0");
+  const utcMs = now.getTime() + now.getTimezoneOffset() * 60 * 1000;
+  const targetMs = utcMs + TIMEZONE_OFFSET * 60 * 60 * 1000;
+
+  return new Date(targetMs);
+}
+function getCurrentTime() {
+  const targetDate = getTargetDate();
+
+  const hours = String(targetDate.getHours()).padStart(2, "0");
+  const minutes = String(targetDate.getMinutes()).padStart(2, "0");
 
   return `${hours}:${minutes}`;
 }
+
 function getCurrentMinuteKey(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  const hours = String(now.getHours()).padStart(2, "0");
-  const minutes = String(now.getMinutes()).padStart(2, "0");
+  const targetDate = getTargetDate();
+  const year = targetDate.getFullYear();
+  const month = String(targetDate.getMonth() + 1).padStart(2, "0");
+  const day = String(targetDate.getDate()).padStart(2, "0");
+  const hours = String(targetDate.getHours()).padStart(2, "0");
+  const minutes = String(targetDate.getMinutes()).padStart(2, "0");
 
   return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
@@ -114,6 +125,9 @@ async function checkReminders(): Promise<void> {
     }
   }
 }
+console.log("TIMEZONE_OFFSET:", TIMEZONE_OFFSET);
+console.log("Current target time:", getCurrentTime());
+console.log("Current target minute key:", getCurrentMinuteKey());
 
 bot.command("start", async (ctx) => {
   await ctx.reply("Привет! Напиши мне вопрос, и я отвечу тебе");
