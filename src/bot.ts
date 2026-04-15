@@ -2,7 +2,6 @@ import "dotenv/config";
 import { Bot } from "grammy";
 import express from "express";
 import crypto from "node:crypto";
-import { error } from "node:console";
 
 const token = process.env.BOT_TOKEN;
 const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
@@ -47,8 +46,7 @@ async function askDeepSeek(userText: string): Promise<string> {
   const messages: deepSeekMessage[] = [
     {
       role: "system",
-      content:
-        "You are a helpful assistant that answers questions based on the provided context.",
+      content: "You are a helpful assistant that answers questions based on the provided context.",
     },
     {
       role: "user",
@@ -70,9 +68,7 @@ async function askDeepSeek(userText: string): Promise<string> {
   });
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(
-      `DeepSeek API error: ${response.status} ${response.statusText} - ${errorText}`,
-    );
+    throw new Error(`DeepSeek API error: ${response.status} ${response.statusText} - ${errorText}`);
   }
   const data = (await response.json()) as deepseekResponse;
   const answer = data.choices?.[0]?.message?.content?.trim();
@@ -108,14 +104,8 @@ async function checkReminders(): Promise<void> {
   const currentMinuteKey = getCurrentMinuteKey();
   for (let i = reminders.length - 1; i >= 0; i--) {
     const reminder = reminders[i];
-    if (
-      reminder.time === currentTime &&
-      reminder.lastTriggeredAt !== currentMinuteKey
-    ) {
-      await bot.api.sendMessage(
-        reminder.chatId,
-        `⏰ Напоминание: ${reminder.text}`,
-      );
+    if (reminder.time === currentTime && reminder.lastTriggeredAt !== currentMinuteKey) {
+      await bot.api.sendMessage(reminder.chatId, `⏰ Напоминание: ${reminder.text}`);
       reminder.lastTriggeredAt = currentMinuteKey;
       if (reminder.repeat === "once") {
         console.log("Удаляю одноразовое напоминание:", reminder.id);
@@ -141,15 +131,11 @@ bot.command("remind", async (ctx) => {
     const text = parts.slice(3).join(" ");
 
     if (!isValidTime(time)) {
-      await ctx.reply(
-        "Некорректное время. Используй формат HH:MM, например 21:00",
-      );
+      await ctx.reply("Некорректное время. Используй формат HH:MM, например 21:00");
       return;
     }
     if (repeat !== "once" && repeat !== "daily") {
-      await ctx.reply(
-        'Некорректный repeat. Используй только "once" или "daily"',
-      );
+      await ctx.reply('Некорректный repeat. Используй только "once" или "daily"');
       return;
     }
     if (!text.trim()) {
@@ -168,9 +154,7 @@ bot.command("remind", async (ctx) => {
   }
 });
 bot.command("reminders", async (ctx) => {
-  const chatReminders = reminders.filter(
-    (reminder) => reminder.chatId === ctx.chat.id,
-  );
+  const chatReminders = reminders.filter((reminder) => reminder.chatId === ctx.chat.id);
 
   if (chatReminders.length === 0) {
     await ctx.reply("У тебя пока нет напоминанний");
@@ -194,8 +178,7 @@ bot.command("delete_reminder", async (ctx) => {
     const reminderId = parts[1];
 
     const reminderIndex = reminders.findIndex(
-      (reminder) =>
-        reminder.id === reminderId && reminder.chatId === ctx.chat.id,
+      (reminder) => reminder.id === reminderId && reminder.chatId === ctx.chat.id,
     );
     if (reminderIndex === -1) {
       await ctx.reply("Напоминание не найдено");
