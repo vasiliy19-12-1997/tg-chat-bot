@@ -2,6 +2,7 @@ import "dotenv/config";
 import { Bot } from "grammy";
 import express from "express";
 import crypto from "node:crypto";
+import { error } from "node:console";
 
 const token = process.env.BOT_TOKEN;
 const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
@@ -37,6 +38,7 @@ type Reminder = {
   text: string;
   time: string; // формат HH:MM
   repeat: "once" | "daily";
+  lastTriggeredAt?: string;
 };
 
 const reminders: Reminder[] = [];
@@ -80,8 +82,47 @@ async function askDeepSeek(userText: string): Promise<string> {
   }
   return answer;
 }
+//utils
 function isValidTime(time: string): boolean {
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(time);
+}
+function getCurrentTime() {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+
+  return `${hours}:${minutes}`;
+}
+function getCurrentMinuteKey(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+async function checkReminders(): Promise<void> {
+  const currentTime = getCurrentTime();
+  const currentMinuteKey = getCurrentMinuteKey();
+  for (let i = reminders.length - 1; i >= 0; i--) {
+    const reminder = reminders[i];
+    if (
+      reminder.time === currentTime &&
+      reminder.lastTriggeredAt !== currentMinuteKey
+    ) {
+      await bot.api.sendMessage(
+        reminder.chatId,
+        `⏰ Напоминание: ${reminder.text}`,
+      );
+      reminder.lastTriggeredAt = currentMinuteKey;
+      if (reminder.repeat === "once") {
+        console.log("Удаляю одноразовое напоминание:", reminder.id);
+        reminders.splice(i, 1);
+      }
+    }
+  }
 }
 
 bot.command("start", async (ctx) => {
@@ -167,6 +208,11 @@ bot.command("delete_reminder", async (ctx) => {
     );
   }
 });
+setInterval(() => {
+  checkReminders().catch((error) => {
+    console.error("Ошибка при проверке напоминаний", error);
+  });
+}, 30 * 1000);
 bot.on("message", async (ctx) => {
   const userText = ctx.message.text;
   if (!userText) {
