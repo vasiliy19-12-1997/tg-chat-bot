@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { Bot } from "grammy";
 import express from "express";
+import crypto from "node:crypto";
 
 const token = process.env.BOT_TOKEN;
 const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
@@ -29,6 +30,16 @@ type deepseekChoice = {
 type deepseekResponse = {
   choices?: deepseekChoice[];
 };
+
+type Reminder = {
+  id: string;
+  chatId: number;
+  text: string;
+  time: string; // формат HH:MM
+  repeat: "once" | "daily";
+};
+
+const reminders: Reminder[] = [];
 
 async function askDeepSeek(userText: string): Promise<string> {
   const messages: deepSeekMessage[] = [
@@ -69,8 +80,92 @@ async function askDeepSeek(userText: string): Promise<string> {
   }
   return answer;
 }
+function isValidTime(time: string): boolean {
+  return /^([01]\d|2[0-3]):([0-5]\d)$/.test(time);
+}
+
 bot.command("start", async (ctx) => {
   await ctx.reply("Привет! Напиши мне вопрос, и я отвечу тебе");
+});
+
+bot.command("remind", async (ctx) => {
+  const parts = ctx.message?.text.split(" ");
+  if (parts) {
+    if (parts?.length < 4) {
+      await ctx.reply("Формат: /remind HH:MM once|daily Текст напоминания");
+      return;
+    }
+    const time = parts[1];
+    const repeat = parts[2] as "once" | "daily";
+    const text = parts.slice(3).join(" ");
+
+    if (!isValidTime(time)) {
+      await ctx.reply(
+        "Некорректное время. Используй формат HH:MM, например 21:00",
+      );
+      return;
+    }
+    if (repeat !== "once" && repeat !== "daily") {
+      await ctx.reply(
+        'Некорректный repeat. Используй только "once" или "daily"',
+      );
+      return;
+    }
+    if (!text.trim()) {
+      await ctx.reply("Текст напоминания не должен быть пустым");
+      return;
+    }
+    const reminder: Reminder = {
+      id: crypto.randomUUID(),
+      text,
+      time,
+      repeat,
+      chatId: ctx.chat.id,
+    };
+    reminders.push(reminder);
+    await ctx.reply(`Напоминание сохранено: ${time}, ${repeat}, ${text}`);
+  }
+});
+bot.command("reminders", async (ctx) => {
+  const chatReminders = reminders.filter(
+    (reminder) => reminder.chatId === ctx.chat.id,
+  );
+
+  if (chatReminders.length === 0) {
+    await ctx.reply("У тебя пока нет напоминанний");
+    return;
+  }
+
+  const text = chatReminders
+    .map((reminder, index) => {
+      return `${index + 1}. ID: ${reminder.id}\nВремя: ${reminder.time}\nПовтор: ${reminder.repeat}\nТекст: ${reminder.text}`;
+    })
+    .join("\n\n");
+
+  await ctx.reply(text);
+});
+bot.command("delete_reminder", async (ctx) => {
+  const parts = ctx.message?.text.split(" ");
+  if (parts) {
+    if (parts?.length > 2) {
+      await ctx.reply("Формат: /delete_reminder ID");
+    }
+    const reminderId = parts[1];
+
+    const reminderIndex = reminders.findIndex(
+      (reminder) =>
+        reminder.id === reminderId && reminder.chatId === ctx.chat.id,
+    );
+    if (reminderIndex === -1) {
+      await ctx.reply("Напоминание не найдено");
+      return;
+    }
+    const deletedReminder = reminders[reminderIndex];
+    reminders.splice(reminderIndex, 1);
+    await ctx.reply(
+      `Напоминание удалено:\n${deletedReminder.time} | ${deletedReminder.repeat} | ${deletedReminder.text}`,
+    );
+  }
 });
 bot.on("message", async (ctx) => {
   const userText = ctx.message.text;
