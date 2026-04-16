@@ -3,11 +3,15 @@ import { Bot } from "grammy";
 import express from "express";
 import crypto from "node:crypto";
 import fs, { existsSync } from "node:fs";
+import { createClient } from "@supabase/supabase-js";
+import e from "express";
 
 const token = process.env.BOT_TOKEN;
 const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
 const PORT = Number(process.env.PORT || 3000);
 const TIMEZONE_OFFSET = Number(process.env.TIMEZONE_OFFSET || 0);
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
 if (!token) {
   throw new Error("BOT_TOKEN is not set");
@@ -16,7 +20,17 @@ if (!token) {
 if (!deepseekApiKey) {
   throw new Error("DEEPSEEK_API_KEY is not set");
 }
+
+if (!supabaseUrl) {
+  throw new Error("SUPABASE_URL is not set");
+}
+
+if (!supabaseAnonKey) {
+  throw new Error("SUPABASE_ANON_KEY is not set");
+}
+
 const bot = new Bot(token);
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 type deepSeekMessage = {
   role: "user" | "assistant" | "system";
@@ -43,7 +57,6 @@ type Reminder = {
 };
 
 const reminders: Reminder[] = [];
-const REMINDERS_FILE = "reminders.json";
 
 async function askDeepSeek(userText: string): Promise<string> {
   const messages: deepSeekMessage[] = [
@@ -113,6 +126,7 @@ function getCurrentMinuteKey(): string {
 
   return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
+
 async function checkReminders(): Promise<void> {
   const currentTime = getCurrentTime();
   const currentMinuteKey = getCurrentMinuteKey();
@@ -122,34 +136,61 @@ async function checkReminders(): Promise<void> {
     if (reminder.time === currentTime && reminder.lastTriggeredAt !== currentMinuteKey) {
       await bot.api.sendMessage(reminder.chatId, `⏰ Напоминание: ${reminder.text}`);
       reminder.lastTriggeredAt = currentMinuteKey;
-      saveRemindersToFile();
       if (reminder.repeat === "once") {
         console.log("Удаляю одноразовое напоминание:", reminder.id);
         reminders.splice(i, 1);
-        saveRemindersToFile();
+        await supabase.from("reminders").delete().eq("id", reminder.id);
       }
     }
   }
 }
-function saveRemindersToFile() {
-  fs.writeFileSync(REMINDERS_FILE, JSON.stringify(reminders, null, 2), "utf-8");
-  console.log("reminders.json updated");
+
+async function saveReminderToSupabase(reminder: Reminder) {
+  const { error } = await supabase.from("reminders").insert([
+    {
+      id: reminder.id,
+      chat_id: reminder.chatId,
+      text: reminder.text,
+      time: reminder.time,
+      repeat: reminder.repeat,
+      last_triggered_at: reminder.lastTriggeredAt || null,
+    },
+  ]);
+
+  if (error) {
+    console.error("Ошибка при сохранении напоминания в Supabase:", error.message);
+  } else {
+    console.log("Напоминание сохранено в Supabase:", reminder.id);
+  }
 }
 
-function loadRemindersFromFile() {
-  if (!existsSync(REMINDERS_FILE)) {
+async function loadRemindersFromSupabase() {
+  const { data, error } = await supabase.from("reminders").select("*");
+
+  if (error) {
+    console.error("Ошибка при загрузке напоминаний из Supabase:", error.message);
     return;
   }
-  const fileContent = fs.readFileSync(REMINDERS_FILE, "utf-8");
-
-  if (!fileContent.trim()) {
+  if (!data) {
     return;
   }
-  const parsedReminders: Reminder[] = JSON.parse(fileContent);
+  //очистим текущий массив напоминаний перед загрузкой из базы
+  reminders.length = 0;
 
-  reminders.push(...parsedReminders);
+  //переводим поля из snakecase в camelCase и пушим в массив
+  data.forEach((row: any) => {
+    reminders.push({
+      id: row.id,
+      chatId: row.chat_id,
+      text: row.text,
+      time: row.time,
+      repeat: row.repeat,
+      lastTriggeredAt: row.last_triggered_at ?? undefined,
+    });
+  });
+  console.log("Все напоминания загружены в память:", reminders.length);
 }
-loadRemindersFromFile();
+
 console.log("Напоминания загружены из файла:", reminders.length);
 bot.command("start", async (ctx) => {
   await ctx.reply("Привет! Напиши мне вопрос, и я отвечу тебе");
@@ -186,7 +227,8 @@ bot.command("remind", async (ctx) => {
       chatId: ctx.chat.id,
     };
     reminders.push(reminder);
-    saveRemindersToFile();
+    // saveRemindersToFile();
+    await saveReminderToSupabase(reminder);
     await ctx.reply(`Напоминание сохранено: ${time}, ${repeat}, ${text}`);
   }
 });
@@ -225,7 +267,7 @@ bot.command("delete_reminder", async (ctx) => {
     }
     const deletedReminder = reminders[reminderIndex];
     reminders.splice(reminderIndex, 1);
-    saveRemindersToFile();
+    await supabase.from("reminders").delete().eq("id", reminderId);
     await ctx.reply(
       `Напоминание удалено:\n${deletedReminder.time} | ${deletedReminder.repeat} | ${deletedReminder.text}`,
     );
@@ -269,8 +311,10 @@ app.get("/health", (_req, res) => {
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+async function startBot() {
+  await loadRemindersFromSupabase();
+  bot.start();
+  console.log("Telegram bot started");
+}
 
-bot.start();
-
-console.log("Telegram bot started");
-console.log("");
+startBot();
