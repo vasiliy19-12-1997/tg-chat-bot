@@ -2,6 +2,7 @@ import "dotenv/config";
 import { Bot } from "grammy";
 import express from "express";
 import crypto from "node:crypto";
+import fs, { existsSync } from "node:fs";
 
 const token = process.env.BOT_TOKEN;
 const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
@@ -42,6 +43,7 @@ type Reminder = {
 };
 
 const reminders: Reminder[] = [];
+const REMINDERS_FILE = "reminders.json";
 
 async function askDeepSeek(userText: string): Promise<string> {
   const messages: deepSeekMessage[] = [
@@ -79,6 +81,7 @@ async function askDeepSeek(userText: string): Promise<string> {
   }
   return answer;
 }
+
 //utils
 function isValidTime(time: string): boolean {
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(time);
@@ -121,17 +124,35 @@ async function checkReminders(): Promise<void> {
     if (reminder.time === currentTime && reminder.lastTriggeredAt !== currentMinuteKey) {
       await bot.api.sendMessage(reminder.chatId, `⏰ Напоминание: ${reminder.text}`);
       reminder.lastTriggeredAt = currentMinuteKey;
+      saveRemindersToFile();
       if (reminder.repeat === "once") {
         console.log("Удаляю одноразовое напоминание:", reminder.id);
         reminders.splice(i, 1);
+        saveRemindersToFile();
       }
     }
   }
 }
-console.log("TIMEZONE_OFFSET:", TIMEZONE_OFFSET);
-console.log("Current target time:", getCurrentTime());
-console.log("Current target minute key:", getCurrentMinuteKey());
+function saveRemindersToFile() {
+  fs.writeFileSync(REMINDERS_FILE, JSON.stringify(reminders, null, 2), "utf-8");
+  console.log("reminders.json updated");
+}
 
+function loadRemindersFromFile() {
+  if (!existsSync(REMINDERS_FILE)) {
+    return;
+  }
+  const fileContent = fs.readFileSync(REMINDERS_FILE, "utf-8");
+
+  if (!fileContent.trim()) {
+    return;
+  }
+  const parsedReminders: Reminder[] = JSON.parse(fileContent);
+
+  reminders.push(...parsedReminders);
+}
+loadRemindersFromFile();
+console.log("Напоминания загружены из файла:", reminders.length);
 bot.command("start", async (ctx) => {
   await ctx.reply("Привет! Напиши мне вопрос, и я отвечу тебе");
 });
@@ -167,9 +188,11 @@ bot.command("remind", async (ctx) => {
       chatId: ctx.chat.id,
     };
     reminders.push(reminder);
+    saveRemindersToFile();
     await ctx.reply(`Напоминание сохранено: ${time}, ${repeat}, ${text}`);
   }
 });
+
 bot.command("reminders", async (ctx) => {
   const chatReminders = reminders.filter((reminder) => reminder.chatId === ctx.chat.id);
 
@@ -186,6 +209,7 @@ bot.command("reminders", async (ctx) => {
 
   await ctx.reply(text);
 });
+
 bot.command("delete_reminder", async (ctx) => {
   const parts = ctx.message?.text.split(" ");
   if (parts) {
@@ -203,16 +227,19 @@ bot.command("delete_reminder", async (ctx) => {
     }
     const deletedReminder = reminders[reminderIndex];
     reminders.splice(reminderIndex, 1);
+    saveRemindersToFile();
     await ctx.reply(
       `Напоминание удалено:\n${deletedReminder.time} | ${deletedReminder.repeat} | ${deletedReminder.text}`,
     );
   }
 });
+
 setInterval(() => {
   checkReminders().catch((error) => {
     console.error("Ошибка при проверке напоминаний", error);
   });
 }, 30 * 1000);
+
 bot.on("message", async (ctx) => {
   const userText = ctx.message.text;
   if (!userText) {
