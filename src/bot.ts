@@ -116,9 +116,7 @@ function getCurrentMinuteKey(): string {
 async function checkReminders(): Promise<void> {
   const currentTime = getCurrentTime();
   const currentMinuteKey = getCurrentMinuteKey();
-  console.log(currentTime + "Текущее время");
-  console.log(currentMinuteKey + "Текущие минуты");
-  console.log(reminders + "Все напоминания");
+
   for (let i = reminders.length - 1; i >= 0; i--) {
     const reminder = reminders[i];
     if (reminder.time === currentTime && reminder.lastTriggeredAt !== currentMinuteKey) {
@@ -275,3 +273,4 @@ app.listen(PORT, () => {
 bot.start();
 
 console.log("Telegram bot started");
+console.log("");
