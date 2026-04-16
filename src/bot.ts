@@ -163,7 +163,7 @@ async function saveReminderToSupabase(reminder: Reminder) {
     console.log("Напоминание сохранено в Supabase:", reminder.id);
   }
 }
-
+//загрузка напоминаний из Supabase при старте бота
 async function loadRemindersFromSupabase() {
   const { data, error } = await supabase.from("reminders").select("*");
 
