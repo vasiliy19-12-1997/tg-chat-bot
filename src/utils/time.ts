@@ -1,4 +1,5 @@
-import { bot, reminders } from "../bot.js";
+import { bot } from "../bot.js";
+import { reminders } from "../services/reminders.js";
 export function isValidTime(time: string): boolean {
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(time);
 }
@@ -27,14 +28,8 @@ export async function checkReminders(): Promise<void> {
   console.log(reminders + "Все напоминания");
   for (let i = reminders.length - 1; i >= 0; i--) {
     const reminder = reminders[i];
-    if (
-      reminder.time === currentTime &&
-      reminder.lastTriggeredAt !== currentMinuteKey
-    ) {
-      await bot.api.sendMessage(
-        reminder.chatId,
-        `⏰ Напоминание: ${reminder.text}`,
-      );
+    if (reminder.time === currentTime && reminder.lastTriggeredAt !== currentMinuteKey) {
+      await bot.api.sendMessage(reminder.chatId, `⏰ Напоминание: ${reminder.text}`);
       reminder.lastTriggeredAt = currentMinuteKey;
       if (reminder.repeat === "once") {
         console.log("Удаляю одноразовое напоминание:", reminder.id);
