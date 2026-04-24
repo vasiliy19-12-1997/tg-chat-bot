@@ -1,8 +1,8 @@
 import { deepseekApiKey } from "../config/config.ts";
-import { deepSeekMessage, deepseekResponse } from "../types/deepseek.ts";
+import { DeepSeekMessage, DeepSeekResponse } from "../types/deepseek.ts";
 
 export async function askDeepSeek(userText: string): Promise<string> {
-  const messages: deepSeekMessage[] = [
+  const messages: DeepSeekMessage[] = [
     {
       role: "system",
       content: "You are a helpful assistant that answers questions based on the provided context.",
@@ -29,7 +29,7 @@ export async function askDeepSeek(userText: string): Promise<string> {
     const errorText = await response.text();
     throw new Error(`DeepSeek API error: ${response.status} ${response.statusText} - ${errorText}`);
   }
-  const data = (await response.json()) as deepseekResponse;
+  const data = (await response.json()) as DeepSeekResponse;
   const answer = data.choices?.[0]?.message?.content?.trim();
 
   if (!answer) {

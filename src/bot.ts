@@ -7,9 +7,15 @@ if (!token) {
 }
 export const bot = new Bot(token);
 
-bot.start();
-console.log("Telegram bot started");
+import "./commands/remind.ts";
+import "./commands/reminders.ts";
+import "./commands/deleteReminder.ts";
+import "./commands/start.ts";
+import "./commands/message.ts";
 
 bot.catch((err) => {
   console.error("Global bot error:", err);
 });
+
+bot.start();
+console.log("Telegram bot started");

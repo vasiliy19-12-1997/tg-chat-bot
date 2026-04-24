@@ -1,9 +1,9 @@
-import { bot } from "../bot.js";
-import { reminders } from "../services/reminders.js";
+import type { Reminder } from "../types/reminder.ts";
+
 export function isValidTime(time: string): boolean {
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(time);
 }
-export function getCurrentTime() {
+export function getCurrentTime(): string {
   const now = new Date();
   const hours = String(now.getHours()).padStart(2, "0");
   const minutes = String(now.getMinutes()).padStart(2, "0");
@@ -20,7 +20,7 @@ export function getCurrentMinuteKey(): string {
 
   return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
-export async function checkReminders(): Promise<void> {
+export async function checkReminders(bot: any, reminders: Reminder[]): Promise<void> {
   const currentTime = getCurrentTime();
   const currentMinuteKey = getCurrentMinuteKey();
   console.log(currentTime + "Текущее время");

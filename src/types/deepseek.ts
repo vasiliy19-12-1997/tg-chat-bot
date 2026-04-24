@@ -1,14 +1,14 @@
-export type deepSeekMessage = {
+export type DeepSeekMessage = {
   role: "user" | "assistant" | "system";
   content: string;
 };
 
-export type deepseekChoice = {
+export type DeepSeekChoice = {
   message?: {
     content?: string;
   };
 };
 
-export type deepseekResponse = {
-  choices?: deepseekChoice[];
+export type DeepSeekResponse = {
+  choices?: DeepSeekChoice[];
 };
