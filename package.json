@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/bot.js",
-    "dev": "node --watch --env-file=.env src/bot.ts"
+    "dev": "tsx --env-file=.env --watch src/bot.ts"
   },
   "engines": {
     "node": "20.x"

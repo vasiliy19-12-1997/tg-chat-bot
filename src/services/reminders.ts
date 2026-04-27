@@ -1,11 +1,12 @@
-import { Reminder } from "../types/reminder.ts";
-import { isValidTime } from "../utils/time.ts";
+import type { Reminder } from "../types/reminder.js";
+import { isValidTime } from "../utils/time.js";
+import type { Bot, Context } from "grammy";
 
 export const reminders: Reminder[] = [];
 
-export async function validateParts(ctx: any) {
-  const parts = ctx.message?.text.split(" ");
-  if (parts) {
+export async function validateParts(ctx: Context) {
+  if (ctx.message?.text) {
+    const parts = ctx.message?.text.split(" ");
     if (parts?.length < 4) {
       await ctx.reply("Формат: /remind HH:MM once|daily Текст напоминания");
       return;
@@ -21,7 +22,7 @@ export function parseRemindCommand(incomingText: string) {
   return { time, repeat, text };
 }
 
-export async function validateRemindInput(ctx: any) {
+export async function validateRemindInput(ctx: Context) {
   const { time, text, repeat } = parseRemindCommand(ctx.message?.text || "");
   if (!isValidTime(time)) {
     await ctx.reply("Некорректное время. Используй формат HH:MM, например 21:00");
@@ -37,14 +38,14 @@ export async function validateRemindInput(ctx: any) {
   }
 }
 
-export function createReminder(ctx: any) {
+export function createReminder(ctx: Context) {
   const { time, text, repeat } = parseRemindCommand(ctx.message?.text || "");
   const reminder: Reminder = {
     id: crypto.randomUUID(),
     text,
     time,
     repeat,
-    chatId: ctx.chat.id,
+    chatId: ctx.chat?.id ? ctx.chat.id : 1,
   };
   return reminder;
 }

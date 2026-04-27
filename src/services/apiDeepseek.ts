@@ -1,5 +1,5 @@
-import { deepseekApiKey } from "../config/config.ts";
-import { DeepSeekMessage, DeepSeekResponse } from "../types/deepseek.ts";
+import { deepseekApiKey } from "../config/config.js";
+import { DeepSeekMessage, DeepSeekResponse } from "../types/deepseek.js";
 
 export async function askDeepSeek(userText: string): Promise<string> {
   const messages: DeepSeekMessage[] = [
@@ -22,7 +22,7 @@ export async function askDeepSeek(userText: string): Promise<string> {
       model: "deepseek-chat",
       messages,
       temperature: 0.7,
-      max_token: 1000,
+      max_tokens: 1000,
     }),
   });
   if (!response.ok) {

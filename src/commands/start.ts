@@ -1,5 +1,7 @@
-import { bot } from "../bot.ts";
+import type { Bot, Context } from "grammy";
 
-bot.command("start", async (ctx) => {
-  await ctx.reply("Привет! Напиши мне вопрос, и я отвечу тебе");
-});
+export function startCommandHandler(bot: Bot<Context>) {
+  bot.command("start", async (ctx) => {
+    await ctx.reply("Привет! Напиши мне вопрос, и я отвечу тебе");
+  });
+}

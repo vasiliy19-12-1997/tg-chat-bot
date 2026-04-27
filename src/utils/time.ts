@@ -1,4 +1,5 @@
-import type { Reminder } from "../types/reminder.ts";
+import { Bot } from "grammy";
+import type { Reminder } from "../types/reminder.js";
 
 export function isValidTime(time: string): boolean {
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(time);
@@ -20,7 +21,7 @@ export function getCurrentMinuteKey(): string {
 
   return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
-export async function checkReminders(bot: any, reminders: Reminder[]): Promise<void> {
+export async function checkReminders(bot: Bot, reminders: Reminder[]): Promise<void> {
   const currentTime = getCurrentTime();
   const currentMinuteKey = getCurrentMinuteKey();
   console.log(currentTime + "Текущее время");
