@@ -1,9 +1,9 @@
 import type { Bot, Context } from "grammy";
-import { reminders } from "../services/reminders.js";
+import { getRemindersByChatId } from "../storage/reminderStorage.js";
 
 export function registrationRemindersHandler(bot: Bot<Context>) {
   bot.command("reminders", async (ctx) => {
-    const chatReminders = reminders.filter((reminder) => reminder.chatId === ctx.chat.id);
+    const chatReminders = getRemindersByChatId(ctx.chat.id);
 
     if (chatReminders.length === 0) {
       await ctx.reply("У тебя пока нет напоминанний");

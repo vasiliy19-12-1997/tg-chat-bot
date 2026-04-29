@@ -1,24 +1,21 @@
-import { reminders } from "../services/reminders.js";
 import type { Bot, Context } from "grammy";
+import { deleteReminderById } from "../storage/reminderStorage.js";
 
 export function registrationDeleteReminderHandler(bot: Bot<Context>) {
   bot.command("delete_reminder", async (ctx) => {
     const parts = ctx.message?.text.split(" ");
     if (parts) {
-      if (parts?.length > 2) {
+      if (parts?.length !== 2 || ctx.chat?.id === undefined) {
         await ctx.reply("Формат: /delete_reminder ID");
+        return;
       }
       const reminderId = parts[1];
+      const deletedReminder = deleteReminderById(reminderId, ctx.chat.id);
 
-      const reminderIndex = reminders.findIndex(
-        (reminder) => reminder.id === reminderId && reminder.chatId === ctx.chat.id,
-      );
-      if (reminderIndex === -1) {
+      if (!deletedReminder) {
         await ctx.reply("Напоминание не найдено");
         return;
       }
-      const deletedReminder = reminders[reminderIndex];
-      reminders.splice(reminderIndex, 1);
       await ctx.reply(
         `Напоминание удалено:\n${deletedReminder.time} | ${deletedReminder.repeat} | ${deletedReminder.text}`,
       );
